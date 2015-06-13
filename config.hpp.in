@@ -1,0 +1,20 @@
+#ifndef CONFIG_HPP
+#define CONFIG_HPP
+
+#include <string>
+
+#cmakedefine DEBUG_REC
+#cmakedefine HAVE_64BIT_SIZE_T
+
+#ifndef nullptr
+  #define nullptr NULL
+#endif
+
+const std::string VERSION = "@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@";
+
+const std::string DEFAULT_INPUT_DIR = "input/";
+const std::string DEFAULT_OUTPUT_DIR  = "output/";
+
+const double FLOAT_NUMBERS_EQUALITY_TOLERANCE = 1e-15;
+
+#endif // CONFIG_HPP

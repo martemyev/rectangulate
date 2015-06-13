@@ -1,0 +1,4 @@
+*.user
+build
+headers/config.hpp
+output*
