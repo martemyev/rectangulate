@@ -160,8 +160,10 @@ public:
 
   std::string mesh_filename;
   std::string properties_filename;
-  int         n_rect_elements_x;
-  int         n_rect_elements_z;
+//  int         n_rect_elements_x;
+//  int         n_rect_elements_z;
+  double h_rect_x;
+  double h_rect_z;
 
 private:
   Parameters(const Parameters&);

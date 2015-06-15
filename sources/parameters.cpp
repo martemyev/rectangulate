@@ -9,8 +9,10 @@
 Parameters::Parameters()
   : mesh_filename(DEFAULT_FILE_NAME),
     properties_filename(DEFAULT_FILE_NAME),
-    n_rect_elements_x(0),
-    n_rect_elements_z(0),
+    h_rect_x(0.0),
+    h_rect_z(0.0),
+//    n_rect_elements_x(0),
+//    n_rect_elements_z(0),
     _parameters(),
     _longest_string_key_len(DEFAULT_PRINT_LEN),
     _longest_string_value_len(DEFAULT_PRINT_LEN)
@@ -19,8 +21,10 @@ Parameters::Parameters()
 
   add_option("-meshfile", new OneParam<std::string>("name of file with triangular mesh", &mesh_filename, ++p));
   add_option("-propfile", new OneParam<std::string>("name of file with media properties", &properties_filename, ++p));
-  add_option("-nnx", new OneParam<int>("number of rectangular elements in x-direction", &n_rect_elements_x, ++p));
-  add_option("-nnz", new OneParam<int>("number of rectangular elements in z-direction", &n_rect_elements_z, ++p));
+  add_option("-hx", new OneParam<double>("size of rectangular cells in x-direction", &h_rect_x, ++p));
+  add_option("-hz", new OneParam<double>("size of rectangular cells in z-direction", &h_rect_z, ++p));
+//  add_option("-nnx", new OneParam<int>("number of rectangular elements in x-direction", &n_rect_elements_x, ++p));
+//  add_option("-nnz", new OneParam<int>("number of rectangular elements in z-direction", &n_rect_elements_z, ++p));
 }
 
 
@@ -145,10 +149,12 @@ void Parameters::check_parameters() const
   require(file_exists(properties_filename), "File '" + properties_filename +
           "' doesn't exist");
 
-  require(n_rect_elements_x > 0, "nnx parameter is wrong: " +
-          d2s(n_rect_elements_x));
-  require(n_rect_elements_z > 0, "nnz parameter is wrong: " +
-          d2s(n_rect_elements_z));
+  require(h_rect_x > 0, "hx parameter is wrong: " + d2s(h_rect_x));
+  require(h_rect_z > 0, "hz parameter is wrong: " + d2s(h_rect_z));
+//  require(n_rect_elements_x > 0, "nnx parameter is wrong: " +
+//          d2s(n_rect_elements_x));
+//  require(n_rect_elements_z > 0, "nnz parameter is wrong: " +
+//          d2s(n_rect_elements_z));
 }
 
 

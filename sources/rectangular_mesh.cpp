@@ -137,7 +137,6 @@ void RectangularMesh::build_elements()
 
 
 
-
 void RectangularMesh::assign_material_id(const TriangularMesh &tri_mesh)
 {
   // First, we pass through the elements of the 'tri_mesh' and assign its
@@ -293,7 +292,9 @@ int RectangularMesh::find_element(const Point2 &point,
 
 
 
-void RectangularMesh::write_binary_files(const std::string &prop_filename) const
+void RectangularMesh::
+write_binary_files(const std::string &prop_filename,
+                   std::vector<std::string> &out_filenames) const
 {
   std::cout << "Writing binary files..." << std::endl;
   double t_begin = get_wall_time();
@@ -306,12 +307,15 @@ void RectangularMesh::write_binary_files(const std::string &prop_filename) const
 
   const int n_properties = properties.begin()->second.size();
 
+  out_filenames.clear();
+  out_filenames.resize(n_properties);
+
   std::ofstream *out = new std::ofstream[n_properties];
   for (int i = 0; i < n_properties; ++i)
   {
-    const std::string fname = "property" + d2s(i) + ".bin";
-    out[i].open(fname.c_str());
-    require(out[i], "File '" + fname + "' can't be opened");
+    out_filenames[i] = "property" + d2s(i) + ".bin";
+    out[i].open(out_filenames[i].c_str(), std::ios::binary);
+    require(out[i], "File '" + out_filenames[i] + "' can't be opened");
   }
 
   for (int el = 0; el < _n_elements; ++el)
@@ -401,6 +405,81 @@ void get_properties(const std::string &filename,
   in.close();
 
   std::cout << "Getting properties is done. Time = "
+            << get_wall_time() - t_begin << std::endl;
+}
+
+
+
+void convert_to_xz(const std::vector<std::string>& out_filenames,
+                   int nnx,
+                   int nnz)
+{
+  std::cout << "Converting to xz plane..." << std::endl;
+  double t_begin = get_wall_time();
+
+  const int n_files = out_filenames.size();
+
+  for (int f = 0; f < n_files; ++f)
+  {
+    const std::string filename = out_filenames[f];
+
+    std::ifstream in(filename.c_str(), std::ios::binary);
+    require(in, "File '" + filename + "' can't be opened");
+
+    in.seekg(0, in.end); // jump to the end of the file
+    int length = in.tellg(); // total length of the file in bytes
+    int size_value = length / (nnx*nnz); // size (in bytes) of one value
+
+    require(length % (nnx*nnz) == 0, "The number of of bytes in the file " +
+            filename + " is not divisible by the number of elements");
+
+    in.seekg(0, in.beg); // jump to the beginning of the file
+
+    double *values = new double[nnx*nnz];
+
+    if (size_value == sizeof(double))
+    {
+      in.read((char*)values, nnx*nnz*size_value); // read all at once
+
+      require(nnx*nnz == (int)in.gcount(), "The number of successfully read "
+              "elements is different from the expected one");
+    }
+    else if (size_value == sizeof(float))
+    {
+      float val = 0;
+      for (int i = 0; i < nnx*nnz; ++i)  // read element-by-element
+      {
+        in.read((char*)&val, size_value); // read a 'float' value
+        values[i] = val;                  // convert it to a 'double' value
+      }
+    }
+    else require(false, "Unknown size of an element in bytes");
+
+    in.close();
+
+    const std::string fname_out = file_stem(filename) + "_xz" +
+                                  file_extension(filename);
+    std::ofstream out(fname_out.c_str(), std::ios::binary);
+    require(out, "File '" + fname_out + "' can't be opened");
+
+    for (int i = nnz-1; i >= 0; --i)
+    {
+      for (int j = 0; j < nnx; ++j)
+        if (size_value == sizeof(double))
+          out.write((char*)&values[i*nnx+j], size_value);
+        else
+        {
+          float val = values[i*nnx+j];
+          out.write((char*)&val, size_value);
+        }
+    }
+
+    out.close();
+
+    delete[] values;
+  }
+
+  std::cout << "Converting to xz plane is done. Time = "
             << get_wall_time() - t_begin << std::endl;
 }
 

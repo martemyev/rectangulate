@@ -35,7 +35,8 @@ public:
 
   void assign_material_id(const TriangularMesh &tri_mesh);
 
-  void write_binary_files(const std::string &filename) const;
+  void write_binary_files(const std::string &prop_filename,
+                          std::vector<std::string> &out_filenames) const;
 
 
 protected: // ========================== PROTECTED =============================
@@ -65,5 +66,8 @@ protected: // ========================== PROTECTED =============================
 void get_properties(const std::string &filename,
                     std::map<int, std::vector<double> > &properties);
 
+void convert_to_xz(const std::vector<std::string>& out_filenames,
+                   int nnx,
+                   int nnz);
 
 #endif // RECTANGULAR_MESH_HPP
