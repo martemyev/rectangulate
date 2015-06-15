@@ -16,5 +16,7 @@ const std::string DEFAULT_INPUT_DIR = "input/";
 const std::string DEFAULT_OUTPUT_DIR  = "output/";
 
 const double FLOAT_NUMBERS_EQUALITY_TOLERANCE = 1e-15;
+const double VERY_SMALL_NUMBER = 1e-32;
+const double FIND_CELL_TOLERANCE = 1e-8;
 
 #endif // CONFIG_HPP

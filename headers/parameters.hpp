@@ -154,7 +154,7 @@ public:
 
   Parameters();
 
-  ~Parameters() { }
+  ~Parameters();
 
   void read_command_line(int argc, char **argv);
 

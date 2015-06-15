@@ -43,6 +43,9 @@ void TriangularMesh::clear()
 
 void TriangularMesh::read_msh(const std::string &meshfile)
 {
+  std::cout << "Reading a triangular mesh..." << std::endl;
+  double t_begin = get_wall_time();
+
   clear(); // in case the mesh was initilized before
 
   // open the mesh file
@@ -99,8 +102,8 @@ void TriangularMesh::read_msh(const std::string &meshfile)
       double coord[n_coords];
       // limits of the computational domain (maximal and minimal values of the
       // nodal coordinates)
-      std::vector<double> max_coord(n_coords);
-      std::vector<double> min_coord(n_coords);
+      std::vector<double> maxcoord(n_coords);
+      std::vector<double> mincoord(n_coords);
 
       // read vertices
       for (int ver = 0; ver < n_vertices; ++ver)
@@ -123,15 +126,15 @@ void TriangularMesh::read_msh(const std::string &meshfile)
         {
           // initialization of the max and min coordinates
           for (int i = 0; i < n_coords; ++i)
-            max_coord[i] = min_coord[i] = coord[i];
+            maxcoord[i] = mincoord[i] = coord[i];
         }
         else // for the other vertices
         {
           for (int i = 0; i < n_coords; ++i)
           {
             // searching max and min coordinates
-            max_coord[i] = std::max(max_coord[i], coord[i]);
-            min_coord[i] = std::min(min_coord[i], coord[i]);
+            maxcoord[i] = std::max(maxcoord[i], coord[i]);
+            mincoord[i] = std::min(mincoord[i], coord[i]);
           }
         }
 
@@ -140,8 +143,8 @@ void TriangularMesh::read_msh(const std::string &meshfile)
       }
       // these points may or may not be one of the mesh vertices if the domain
       // has curvilinear boundaries
-      _max_coord = Point2(max_coord[0], max_coord[1]);
-      _min_coord = Point2(min_coord[0], min_coord[1]);
+      _max_coord = Point2(maxcoord[0], maxcoord[1]);
+      _min_coord = Point2(mincoord[0], mincoord[1]);
 
       expect(n_vertices == (int)vertices_map.size(),
              "Vertices numbers are not unique: n_vertices = " +
@@ -152,8 +155,8 @@ void TriangularMesh::read_msh(const std::string &meshfile)
 
     else if (str == "$Elements") // read the mesh elements
     {
-      int n_elements; // the number of mesh elements
-      in >> n_elements; // read that number
+      int nelements; // the number of mesh elements
+      in >> nelements; // read that number
       getline(in, str); // empty string
 
       int number; // the serial number of the element [1, nElements]
@@ -188,7 +191,7 @@ void TriangularMesh::read_msh(const std::string &meshfile)
         int header[header_size];
         int n_elem_type; // number of elements of a specific type
 
-        while (n_elem_part < n_elements)
+        while (n_elem_part < nelements)
         {
           in.read(reinterpret_cast<char*>(header), header_size*sizeof(int));
           el_type     = header[0];
@@ -281,14 +284,14 @@ void TriangularMesh::read_msh(const std::string &meshfile)
           } // pass through all elements of one type
         }
 
-        expect(n_elem_part == n_elements, "We read " + d2s(n_elem_part) +
-               " elements, whereas there are " + d2s(n_elements) + " of them");
+        expect(n_elem_part == nelements, "We read " + d2s(n_elem_part) +
+               " elements, whereas there are " + d2s(nelements) + " of them");
 
       } // binary format
 
       else // ASCII format
       {
-        for (int el = 0; el < n_elements; ++el)
+        for (int el = 0; el < nelements; ++el)
         {
           // read serial number, type of an element, and number of tags
           in >> number >> el_type >> n_tags;
@@ -370,9 +373,9 @@ void TriangularMesh::read_msh(const std::string &meshfile)
         } // loop over mesh elements
 
         // check some expectations
-        expect(number == n_elements, "The number of the last read Gmsh's "
+        expect(number == nelements, "The number of the last read Gmsh's "
                "element (" + d2s<int>(number) + ") is not equal to the amount "
-               "of all elements in the mesh (" + d2s<int>(n_elements) + ")");
+               "of all elements in the mesh (" + d2s<int>(nelements) + ")");
 
       } // ASCII format
 
@@ -391,5 +394,63 @@ void TriangularMesh::read_msh(const std::string &meshfile)
   } // read the mesh file
 
   in.close(); // close the file
+
+  std::cout << "Reading a triangular mesh is done. Time = "
+            << get_wall_time() - t_begin << std::endl;
 }
 
+
+
+const Triangle& TriangularMesh::element(int number) const
+{
+  expect(number >= 0 && number < (int)_elements.size(), "The requested element "
+         "(number " + d2s(number) + ") is out of range [0, " +
+         d2s(_elements.size()) + ")");
+
+  return *_elements[number];
+}
+
+
+
+int TriangularMesh::find_element(const Point2 &point,
+                                 bool throw_exception) const
+{
+  const double px = point.x();
+  const double pz = point.z();
+
+  // if the point is out of the region bounded by the rectangle connecting the
+  // min_coord and max_coord (i.e. min and max points) of the mesh, that means
+  // that the point clearly doesn't belong to the mesh
+  const double x0 = _min_coord.x();
+  const double x1 = _max_coord.x();
+  const double z0 = _min_coord.z();
+  const double z1 = _max_coord.z();
+  if (px < x0 - FIND_CELL_TOLERANCE ||
+      px > x1 + FIND_CELL_TOLERANCE ||
+      pz < z0 - FIND_CELL_TOLERANCE ||
+      pz > z1 + FIND_CELL_TOLERANCE)
+  {
+    if (throw_exception)
+      require(false, "A triangle containing point " + d2s(point) + " was not "
+              "found");
+
+    return -1; // an element wan't found
+  }
+
+  // If the point is within the region bounded by min and max possible points,
+  // that also doesn't mean that the point belong to the mesh, but in this case
+  // we have to check all elements.
+
+  for (size_t el = 0; el < _elements.size(); ++el)
+  {
+    if(_elements[el]->contains_point(point, _vertices))
+      return el;
+  }
+
+  // We can be here only if we didn't find a cell
+  if (throw_exception)
+    require(false, "A triangle containing point " + d2s(point) + " was not "
+            "found");
+
+  return -1; // to show that the element wasn't found
+}

@@ -5,6 +5,8 @@
 
 #include <vector>
 
+class Point2;
+
 
 
 class Triangle
@@ -26,7 +28,12 @@ public:
 
   ~Triangle() { }
 
+  int material_id() const { return _material_id; }
 
+  Point2 center(const std::vector<Point2> &points) const;
+
+  bool contains_point(const Point2 &point,
+                      const std::vector<Point2> &mesh_points) const;
 
 private:
 
@@ -38,6 +45,7 @@ private:
 
   int _partition_id; ///< ID of partition (in case of domain decomposition)
 
+  double area(const Point2& v0, const Point2& v1, const Point2& v2) const;
 };
 
 

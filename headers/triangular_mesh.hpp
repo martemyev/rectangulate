@@ -29,7 +29,16 @@ public:
    */
   void read_msh(const std::string &meshfile);
 
+  Point2 min_coord() const { return _min_coord; }
+  Point2 max_coord() const { return _max_coord; }
 
+  int n_elements() const { return _elements.size(); }
+
+  const Triangle& element(int number) const;
+
+  const std::vector<Point2>& get_vertices() const { return _vertices; }
+
+  int find_element(const Point2 &point, bool throw_exception) const;
 
 private:
 

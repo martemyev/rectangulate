@@ -26,6 +26,16 @@ Parameters::Parameters()
 
 
 
+Parameters::~Parameters()
+{
+  ParaMap::const_iterator iter = _parameters.begin();
+  for (; iter != _parameters.end(); ++iter)
+    delete iter->second;
+}
+
+
+
+
 void Parameters::read_command_line(int argc, char **argv)
 {
   // Check for help

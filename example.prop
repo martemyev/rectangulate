@@ -1,0 +1,26 @@
+#===============================================================================
+# This is an example of the properties file. It defines the map between the
+# material ID (physical entity index in Gmsh) and media properties. The number
+# of media properties may be arbitrary for different meshes, but for the same
+# mesh it must be the same, i.e. if we have 2 properties (for example, density
+# and velocity of P-wave), then we must provide these 2 properties for each
+# material presented in the mesh.
+# The properties file has several columns, the first one is always the material
+# ID followed by the media properties. For example, here we have:
+# MatID rho vp vs
+# In this case we will have 3 output binary files:
+# property0.bin // corresponds to the 1-st property
+# property1.bin // corresponds to the 2-nd property
+# property2.bin // corresponds to the 3-rd property
+# The user is free to rename the files after that according to their needs.
+#===============================================================================
+1 1950 1800 1000 
+2 2120 2500 1400 
+3 2220 3000 1700 
+4 2010 2000 1100 
+5 2120 2500 1400 
+6 2220 3000 1700 
+7 2300 3500 1900 
+8 1870 1500  800 
+9 2010 2000 1100 
+10 2120 2500 1400 
