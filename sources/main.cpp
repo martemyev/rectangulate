@@ -1,6 +1,7 @@
 #include "parameters.hpp"
 #include "triangular_mesh.hpp"
 #include "rectangular_mesh.hpp"
+#include "utilities.hpp"
 
 #include <iostream>
 
@@ -8,6 +9,8 @@
 
 int main(int argc, char **argv)
 {
+  double t_begin = get_wall_time();
+
   try
   {
     Parameters param;
@@ -47,6 +50,8 @@ int main(int argc, char **argv)
     std::cerr << "\n\nUnknown exception has been thrown!" << std::endl;
     return 3;
   }
+
+  show_time(t_begin);
 
   return 0;
 }
