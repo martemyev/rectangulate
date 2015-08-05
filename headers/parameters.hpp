@@ -158,14 +158,34 @@ public:
 
   void read_command_line(int argc, char **argv);
 
+  /**
+   * Name of a file with a triangular mesh.
+   */
   std::string mesh_filename;
+
+  /**
+   * Name of a file with description of properties of media.
+   */
   std::string properties_filename;
-//  int         n_rect_elements_x;
-//  int         n_rect_elements_z;
+
+  /**
+   * Size of a rectangular cell in x-direction.
+   */
   double h_rect_x;
+
+  /**
+   * Size of a rectangular cell in z-direction.
+   */
   double h_rect_z;
 
+  /**
+   * Number of random points in each triangle for setting up material IDs for
+   * rectanles.
+   */
+  int n_random_points;
+
 private:
+
   Parameters(const Parameters&);
   Parameters& operator =(const Parameters&);
 

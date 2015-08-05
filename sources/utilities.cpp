@@ -65,21 +65,6 @@ double get_wall_time()
 
 //------------------------------------------------------------------------------
 //
-// Show time elapsed from the given t_wall_begin
-//
-//------------------------------------------------------------------------------
-void show_time(double t_wall_begin)
-{
-//  std::cout.setf(std::ios::scientific);
-  std::cout.precision(8);
-
-  std::cout << "\nTOTAL TIME\n";
-  std::cout << "wall time = " << get_wall_time() - t_wall_begin << " seconds"
-            << std::endl;
-}
-
-//------------------------------------------------------------------------------
-//
 // Name of a file without a path
 //
 //------------------------------------------------------------------------------

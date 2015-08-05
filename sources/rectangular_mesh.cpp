@@ -5,6 +5,7 @@
 #include "triangle.hpp"
 
 #include <fstream>
+#include <random>
 
 const int    VOID_MATERIAL_ID       = -1;
 const double VOID_MATERIAL_PROPERTY = -1;
@@ -137,10 +138,12 @@ void RectangularMesh::build_elements()
 
 
 
-void RectangularMesh::assign_material_id(const TriangularMesh &tri_mesh)
+void RectangularMesh::assign_material_id(const TriangularMesh &tri_mesh,
+                                         int n_rand_points)
 {
-  // First, we pass through the elements of the 'tri_mesh' and assign its
-  // properties to the coinciding elements of this rectangular grid. This goes
+  // First, we pass through the elements of the 'tri_mesh', consider each
+  // triangle, generate n_rand_points random points in it, and assign the
+  // material IDs to the coinciding elements of this rectangular grid. This goes
   // very fast. Then we consider the elements of the rectangular grid that are
   // still have no assigned properties. For them we go in a standard way, and
   // look for the elements of the 'tri_mesh' containing centers of the
@@ -148,6 +151,7 @@ void RectangularMesh::assign_material_id(const TriangularMesh &tri_mesh)
   // rectangular elements much smaller, than if we go standard way.
 
   double t0 = get_wall_time();
+  std::cout << "Assigning material IDs..." << std::endl;
 
   // all unassigned from the beginning
   std::vector<bool> assigned(_n_elements, false);
@@ -163,30 +167,46 @@ void RectangularMesh::assign_material_id(const TriangularMesh &tri_mesh)
   for (int el = 0; el < _n_elements; ++el)
     rect_centers[el] = _elements[el].center(_vertices);
 
+  std::mt19937 rand_engine; // random generator engine
+
+  Point2 tri_vertices[Triangle::N_VERTICES]; // vertices of a triangle
+
   bool throw_exc = false; // we do not throw an exception if we can't find
                           // a proper rect cell for the one from the 'tri_mesh'
   for (int el = 0; el < tri_mesh.n_elements(); ++el)
   {
     const Triangle& tri_cell = tri_mesh.element(el);
-    const Point2 tri_center = tri_cell.center(tri_mesh.get_vertices());
-    const int rect_cell_number = this->find_element(tri_center, throw_exc);
-    if (rect_cell_number != -1) // if the element is found
+    tri_cell.get_vertices(tri_mesh.get_vertices(), tri_vertices);
+    const Point2& A = tri_vertices[0];
+    const Point2& B = tri_vertices[1];
+    const Point2& C = tri_vertices[2];
+    for (int r = 0; r < n_rand_points; ++r)
     {
-      // if it wasn't assigned, assign properties and save the distance between
-      // centers
-      if (!assigned[rect_cell_number])
+      std::uniform_real_distribution<double> distribution(0.0, 1.0);
+      const double r1 = distribution(rand_engine);
+      const double r2 = distribution(rand_engine);
+      const double r3 = sqrt(r1);
+      const Point2 tri_point = (1.-r3)*A + r3*(1.-r2)*B + r3*r2*C;
+
+      const int rect_cell_number = this->find_element(tri_point, throw_exc);
+      if (rect_cell_number != -1) // if the element is found
       {
-        _elements[rect_cell_number].set_material_id(tri_cell.material_id());
-        assigned[rect_cell_number] = true;
-        dist_to_center[rect_cell_number] = (rect_centers[rect_cell_number] -
-                                            tri_center).L2_norm();
-      } else { // if the rect cell has been already assigned, compare the new
-               // distance with the previously computed one
-        const double dist = (rect_centers[rect_cell_number]-tri_center).L2_norm();
-        if (dist < dist_to_center[rect_cell_number])
+        // if it wasn't assigned, assign properties and save the distance
+        // between the point and the center of the rectangle
+        if (!assigned[rect_cell_number])
         {
           _elements[rect_cell_number].set_material_id(tri_cell.material_id());
-          dist_to_center[rect_cell_number] = dist;
+          assigned[rect_cell_number] = true;
+          dist_to_center[rect_cell_number] = (rect_centers[rect_cell_number] -
+                                              tri_point).L2_norm();
+        } else { // if the rect cell has been already assigned, compare the new
+                 // distance with the previously computed one
+          double dist = (rect_centers[rect_cell_number]-tri_point).L2_norm();
+          if (dist < dist_to_center[rect_cell_number])
+          {
+            _elements[rect_cell_number].set_material_id(tri_cell.material_id());
+            dist_to_center[rect_cell_number] = dist;
+          }
         }
       }
     }
@@ -195,10 +215,10 @@ void RectangularMesh::assign_material_id(const TriangularMesh &tri_mesh)
   int n_first_assigned = 0;
   for (size_t i = 0; i < assigned.size(); ++i)
     n_first_assigned += (assigned[i] ? 1 : 0);
-  std::cout << "assign properties from triagnular mesh to part of the rect one "
+  std::cout << "assign properties from triangular mesh to part of the rect one "
                "time = " << get_wall_time() - t0 << "\nN assigned rect cells "
             << n_first_assigned << " what is "
-            << int(n_first_assigned*100/_n_elements)
+            << static_cast<int>(n_first_assigned*100/_n_elements)
             << "% of total number" << std::endl;
 
   // Here - there is a chance, that all rectangular elements are already
@@ -235,6 +255,9 @@ void RectangularMesh::assign_material_id(const TriangularMesh &tri_mesh)
       }
     }
   }
+
+  std::cout << "Assigning material IDs is done. Time = "
+            << get_wall_time() - t0 << std::endl;
 }
 
 
@@ -271,21 +294,21 @@ int RectangularMesh::find_element(const Point2 &point,
   // -----------
   // we can simplify the search of the element containing the given point:
 
-  // find the x-range where the point is
-  int nx = -1;
   const double hx = (x1 - x0) / _n_elements_x;
-  for (int i = 1; i < _n_elements_x+1 && nx == -1; ++i)
-    if (px < x0 + i*hx + tol)
-      nx = i - 1;
-  expect(nx != -1, "The x-range is not found");
-
-  // find the z-range where the point is
-  int nz = -1;
   const double hz = (z1 - z0) / _n_elements_z;
-  for (int i = 1; i < _n_elements_z+1 && nz == -1; ++i)
-    if (pz < z0 + i*hz + tol)
-      nz = i - 1;
-  expect(nz != -1, "The z-range is not found");
+
+  const int nx = std::min(static_cast<int>((px-x0)/hx), _n_elements_x-1);
+  const int nz = std::min(static_cast<int>((pz-z0)/hz), _n_elements_z-1);
+
+  if (nx < 0 || nx >= _n_elements_x ||
+      nz < 0 || nz >= _n_elements_z)
+  {
+    if (throw_exception)
+      require(false, "The rectangular element for the point " + d2s(point) +
+              " wasn't found");
+
+    return -1; // to show that the point in not here
+  }
 
   return (nz*_n_elements_x + nx);
 }

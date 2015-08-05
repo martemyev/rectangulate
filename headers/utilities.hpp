@@ -79,8 +79,6 @@ void requirement_fails(const char *file,
 
 double get_wall_time();
 
-void show_time(double t_wall_begin);
-
 std::string file_name(const std::string &path);
 
 std::string file_path(const std::string &path);

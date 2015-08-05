@@ -33,7 +33,7 @@ public:
 
   void build();
 
-  void assign_material_id(const TriangularMesh &tri_mesh);
+  void assign_material_id(const TriangularMesh &tri_mesh, int n_rand_points);
 
   void write_binary_files(const std::string &prop_filename,
                           std::vector<std::string> &out_filenames) const;

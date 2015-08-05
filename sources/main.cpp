@@ -1,6 +1,6 @@
 #include "parameters.hpp"
-#include "triangular_mesh.hpp"
 #include "rectangular_mesh.hpp"
+#include "triangular_mesh.hpp"
 #include "utilities.hpp"
 
 #include <iostream>
@@ -9,7 +9,7 @@
 
 int main(int argc, char **argv)
 {
-  double t_begin = get_wall_time();
+  auto t_begin = get_wall_time();
 
   try
   {
@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 
     RectangularMesh rect_mesh(min, max, nnx, nnz);
     rect_mesh.build();
-    rect_mesh.assign_material_id(tri_mesh);
+    rect_mesh.assign_material_id(tri_mesh, param.n_random_points);
 
     std::vector<std::string> out_filenames;
     rect_mesh.write_binary_files(param.properties_filename, out_filenames);
@@ -51,7 +51,9 @@ int main(int argc, char **argv)
     return 3;
   }
 
-  show_time(t_begin);
-
-  return 0;
+  std::cout.precision(8);
+  std::cout << "\nTOTAL TIME\n";
+  std::cout << "wall time = " << get_wall_time() - t_begin << " seconds"
+            << std::endl;
 }
+

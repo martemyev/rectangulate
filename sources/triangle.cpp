@@ -101,6 +101,22 @@ bool Triangle::contains_point(const Point2 &point,
 
 
 
+void Triangle::get_vertices(const std::vector<Point2> &points,
+                            Point2 *vertices) const
+{
+  for (int v = 0; v < N_VERTICES; ++v)
+  {
+    const int vert = _vertices[v];
+    expect(vert >= 0 && vert < static_cast<int>(points.size()), "The " + d2s(v)+
+           "-th vertex (" + d2s(vert) + " is out of range [0, n_points), where "
+           "n_points = points.size(), where points is a given vector");
+
+    vertices[v] = points[vert];
+  }
+}
+
+
+
 double Triangle::area(const Point2& v0,
                       const Point2& v1,
                       const Point2& v2) const

@@ -35,6 +35,12 @@ public:
   bool contains_point(const Point2 &point,
                       const std::vector<Point2> &mesh_points) const;
 
+  /**
+   * Get triangle's vertices with the coordinates.
+   */
+  void get_vertices(const std::vector<Point2> &points,
+                    Point2 *vertices) const;
+
 private:
 
   std::vector<int> _vertices; ///< Vertices indices
