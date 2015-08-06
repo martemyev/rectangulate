@@ -564,10 +564,10 @@ void convert_to_node_values(const std::vector<std::string>& out_filenames,
         double sum = 0.0;
         int count = 0;
 
-        if (i-1 >= 0)  { sum += values[i-1]; ++count; }
-        if (i+1 < nnz) { sum += values[i+1]; ++count; }
-        if (j-1 >= 0)  { sum += values[j-1]; ++count; }
-        if (j+1 < nnx) { sum += values[j+1]; ++count; }
+        if (i-1 >= 0)  { sum += values[(i-1)*nnx+j]; ++count; }
+        if (i+1 < nnz) { sum += values[(i+1)*nnx+j]; ++count; }
+        if (j-1 >= 0)  { sum += values[i*nnx+(j-1)]; ++count; }
+        if (j+1 < nnx) { sum += values[i*nnx+(j+1)]; ++count; }
 
         const int el = i*(nnx+1) + j;
         values_at_nodes[el] = sum / count;
@@ -595,6 +595,19 @@ void convert_to_node_values(const std::vector<std::string>& out_filenames,
       }
     }
     else require(false, "Unknown size of an element in bytes");
+
+    out.close();
+
+    const std::string fname_out_ASCII = file_stem(filename) + "_nodes.txt";
+    out.open(fname_out_ASCII.c_str());
+    require(out, "File '" + fname_out_ASCII + "' can't be opened");
+
+    out.setf(std::ios::scientific);
+    out.precision(16);
+
+    for (int i = 0; i < nnz+1; ++i)
+      for (int j = 0; j < nnx+1; ++j)
+        out << values_at_nodes[i*(nnx+1)+j] << "\n";
 
     out.close();
 
