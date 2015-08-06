@@ -35,6 +35,7 @@ int main(int argc, char **argv)
     rect_mesh.write_binary_files(param.properties_filename, out_filenames);
 
     convert_to_xz(out_filenames, nnx, nnz);
+    convert_to_node_values(out_filenames, nnx, nnz);
   }
   catch(int)
   {

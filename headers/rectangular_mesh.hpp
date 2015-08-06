@@ -70,4 +70,8 @@ void convert_to_xz(const std::vector<std::string>& out_filenames,
                    int nnx,
                    int nnz);
 
+void convert_to_node_values(const std::vector<std::string>& out_filenames,
+                            int nnx,
+                            int nnz);
+
 #endif // RECTANGULAR_MESH_HPP

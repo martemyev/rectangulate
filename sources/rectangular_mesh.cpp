@@ -453,7 +453,7 @@ void convert_to_xz(const std::vector<std::string>& out_filenames,
     int length = in.tellg(); // total length of the file in bytes
     int size_value = length / (nnx*nnz); // size (in bytes) of one value
 
-    require(length % (nnx*nnz) == 0, "The number of of bytes in the file " +
+    require(length % (nnx*nnz) == 0, "The number of bytes in the file " +
             filename + " is not divisible by the number of elements");
 
     in.seekg(0, in.beg); // jump to the beginning of the file
@@ -503,6 +503,106 @@ void convert_to_xz(const std::vector<std::string>& out_filenames,
   }
 
   std::cout << "Converting to xz plane is done. Time = "
+            << get_wall_time() - t_begin << std::endl;
+}
+
+
+
+void convert_to_node_values(const std::vector<std::string>& out_filenames,
+                            int nnx,
+                            int nnz)
+{
+  std::cout << "Converting to node values..." << std::endl;
+  double t_begin = get_wall_time();
+
+  const int n_files = out_filenames.size();
+
+  for (int f = 0; f < n_files; ++f)
+  {
+    const std::string filename = out_filenames[f];
+
+    std::ifstream in(filename.c_str(), std::ios::binary);
+    require(in, "File '" + filename + "' can't be opened");
+
+    in.seekg(0, in.end); // jump to the end of the file
+    int length = in.tellg(); // total length of the file in bytes
+    int size_value = length / (nnx*nnz); // size (in bytes) of one value
+
+    require(length % (nnx*nnz) == 0, "The number of bytes in the file " +
+            filename + " is not divisible by the number of elements");
+
+    in.seekg(0, in.beg); // jump to the beginning of the file
+
+    double *values = new double[nnx*nnz];
+
+    if (size_value == sizeof(double))
+    {
+      in.read((char*)values, nnx*nnz*size_value); // read all at once
+
+      require(nnx*nnz == (int)in.gcount(), "The number of successfully read "
+              "elements is different from the expected one");
+    }
+    else if (size_value == sizeof(float))
+    {
+      float val = 0;
+      for (int i = 0; i < nnx*nnz; ++i)  // read element-by-element
+      {
+        in.read((char*)&val, size_value); // read a 'float' value
+        values[i] = val;                  // convert it to a 'double' value
+      }
+    }
+    else require(false, "Unknown size of an element in bytes");
+
+    in.close();
+
+    double *values_at_nodes = new double[(nnx+1)*(nnz+1)];
+
+    for (int i = 0; i < nnz+1; ++i)
+    {
+      for (int j = 0; j < nnx+1; ++j)
+      {
+        double sum = 0.0;
+        int count = 0;
+
+        if (i-1 >= 0)  { sum += values[i-1]; ++count; }
+        if (i+1 < nnz) { sum += values[i+1]; ++count; }
+        if (j-1 >= 0)  { sum += values[j-1]; ++count; }
+        if (j+1 < nnx) { sum += values[j+1]; ++count; }
+
+        const int el = i*(nnx+1) + j;
+        values_at_nodes[el] = sum / count;
+      }
+    }
+
+    const std::string fname_out = file_stem(filename) + "_nodes" +
+                                  file_extension(filename);
+    std::ofstream out(fname_out.c_str(), std::ios::binary);
+    require(out, "File '" + fname_out + "' can't be opened");
+
+    if (size_value == sizeof(double))
+    {
+      out.write((char*)values_at_nodes, (nnx+1)*(nnz+1)*size_value);
+    }
+    else if (size_value == sizeof(float))
+    {
+      for (int i = 0; i < nnz+1; ++i)
+      {
+        for (int j = 0; j < nnx+1; ++j)
+        {
+          float val = values_at_nodes[i*(nnx+1)+j];
+          out.write((char*)&val, size_value);
+        }
+      }
+    }
+    else require(false, "Unknown size of an element in bytes");
+
+    out.close();
+
+    delete[] values_at_nodes;
+    delete[] values;
+  }
+
+  std::cout << "Converting to node values is done. Time = "
             << get_wall_time() - t_begin << std::endl;
 }
 
