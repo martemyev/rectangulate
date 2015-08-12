@@ -72,7 +72,8 @@ Point2 Triangle::center(const std::vector<Point2> &mesh_points) const
 
 
 bool Triangle::contains_point(const Point2 &point,
-                              const std::vector<Point2> &mesh_points) const
+                              const std::vector<Point2> &mesh_points,
+                              double *areas_ratio) const
 {
   // we create 3 triangles defined by the vertices of the triangle and by the
   // point of interest. if the areas of these 3 triangles coincide with the
@@ -92,6 +93,8 @@ bool Triangle::contains_point(const Point2 &point,
   const double area_2 = area(point, v1, v2);
 
   const double diff = fabs((area_orig - area_0 - area_1 - area_2) / area_orig);
+  if (areas_ratio != nullptr)
+    *areas_ratio = diff;
 
   if (diff < FIND_CELL_TOLERANCE)
     return true;
@@ -113,6 +116,15 @@ void Triangle::get_vertices(const std::vector<Point2> &points,
 
     vertices[v] = points[vert];
   }
+}
+
+
+
+int Triangle::vertex(int num) const
+{
+  expect(num >= 0 && num < N_VERTICES, "Input parameter (" + d2s(num) + " is "
+         "out of range [0, " + d2s(N_VERTICES) + ")");
+  return _vertices[num];
 }
 
 

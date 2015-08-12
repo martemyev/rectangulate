@@ -178,12 +178,6 @@ public:
    */
   double h_rect_z;
 
-  /**
-   * Number of random points in each triangle for setting up material IDs for
-   * rectanles.
-   */
-  int n_random_points;
-
 private:
 
   Parameters(const Parameters&);

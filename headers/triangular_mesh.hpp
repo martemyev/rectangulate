@@ -38,7 +38,13 @@ public:
 
   const std::vector<Point2>& get_vertices() const { return _vertices; }
 
-  int find_element(const Point2 &point, bool throw_exception) const;
+  bool contains_point(const Point2 &point) const;
+
+  int find_element(const Point2 &point,
+                   int start_index,
+                   bool throw_exception) const;
+
+  int full_search(const Point2 &point) const;
 
 private:
 
@@ -61,8 +67,11 @@ private:
    */
   Point2 _max_coord;
 
-  std::vector<Point2> _vertices; ///< Mesh vertices
-  std::vector<Triangle*> _elements; ///< Mesh elements
+  std::vector<Point2> _vertices; ///< Mesh vertices.
+  std::vector<Triangle*> _elements; ///< Mesh elements.
+  std::vector<std::vector<int> > _node_to_cell; ///< Map between the number of a
+                                                ///< node and a list of cells to
+                                                ///< which it belongs.
 
 };
 

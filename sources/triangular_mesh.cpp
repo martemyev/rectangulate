@@ -13,7 +13,8 @@ TriangularMesh::TriangularMesh()
   : _min_coord(),
     _max_coord(),
     _vertices(),
-    _elements()
+    _elements(),
+    _node_to_cell()
 { }
 
 
@@ -37,6 +38,12 @@ void TriangularMesh::clear()
   for (; elem != end; ++elem)
     delete *elem;
   _elements.clear();
+
+  auto iter = _node_to_cell.begin();
+  auto iend = _node_to_cell.end();
+  for (; iter != iend; ++iter)
+    iter->clear();
+  _node_to_cell.clear();
 }
 
 
@@ -94,6 +101,7 @@ void TriangularMesh::read_msh(const std::string &meshfile)
       int n_vertices;
       in >> n_vertices; // read that number
       _vertices.resize(n_vertices); // allocate the memory for mesh vertices
+      _node_to_cell.resize(n_vertices);
       getline(in, str); // read some empty string
 
       int number; // the global number of the vertex
@@ -146,10 +154,12 @@ void TriangularMesh::read_msh(const std::string &meshfile)
       _max_coord = Point2(maxcoord[0], maxcoord[1]);
       _min_coord = Point2(mincoord[0], mincoord[1]);
 
+      std::cout << "  min_coord = " << _min_coord << "\n";
+      std::cout << "  max_coord = " << _max_coord << "\n";
+
       expect(n_vertices == (int)vertices_map.size(),
-             "Vertices numbers are not unique: n_vertices = " +
-             d2s<int>(n_vertices) + " vertices_map.size() = " +
-             d2s<unsigned>(vertices_map.size()));
+             "Vertices numbers are not unique: n_vertices = " + d2s(n_vertices)+
+             " vertices_map.size() = " + d2s(vertices_map.size()));
 
     } // read the vertices
 
@@ -233,7 +243,7 @@ void TriangularMesh::read_msh(const std::string &meshfile)
               n_partitions = data[dd++];
               expect(n_partitions >= 1, "The number of tags is more than 2. "
                      "That means that we have partitions. But the number of "
-                     "partitions is " + d2s<int>(n_partitions));
+                     "partitions is " + d2s(n_partitions));
               // the partition which the element belongs to
               partition = data[dd++] - 1; // we do (-1) since we associate the number
                                           // of partition (which is numerated from 1)
@@ -253,7 +263,7 @@ void TriangularMesh::read_msh(const std::string &meshfile)
                   ghost_cells[gc] = -data[dd++];
                   expect(ghost_cells[gc] > 0,
                          "The number of the ghost cell (positive one) is "
-                         "unexpected (" + d2s<int>(ghost_cells[gc]) + ")");
+                         "unexpected (" + d2s(ghost_cells[gc]) + ")");
                   // we decrease by 1 for the same reason as in case of the
                   // number of partition
                   --ghost_cells[gc];
@@ -276,10 +286,13 @@ void TriangularMesh::read_msh(const std::string &meshfile)
             // add the new element in the list
             if (el_type == 2) // 3-nodes triangle
             {
+              const int serial_number = _elements.size();
               _elements.push_back(new Triangle(nodes,
-                                               _elements.size(), // serial number
+                                               serial_number,
                                                phys_domain,
                                                extra_id));
+              for (int ii = 0; ii < n_elem_nodes; ++ii)
+                _node_to_cell[nodes[ii]].push_back(serial_number);
             }
           } // pass through all elements of one type
         }
@@ -311,7 +324,7 @@ void TriangularMesh::read_msh(const std::string &meshfile)
             n_partitions = data[2];
             expect(n_partitions >= 1, "The number of tags is more than 2. That "
                    "means that we have partitions. But the number of "
-                   "partitions is " + d2s<int>(n_partitions));
+                   "partitions is " + d2s(n_partitions));
             // the partition which the element belongs to
             partition = data[3] - 1; // we do (-1) since we associate the number
                                      // of partition (which is numerated from 1)
@@ -331,7 +344,7 @@ void TriangularMesh::read_msh(const std::string &meshfile)
                 ghost_cells[gc] = -data[4 + gc];
                 expect(ghost_cells[gc] > 0,
                        "The number of the ghost cell (positive one) is "
-                       "unexpected (" + d2s<int>(ghost_cells[gc]) + ")");
+                       "unexpected (" + d2s(ghost_cells[gc]) + ")");
                 // we decrease by 1 for the same reason as in case of the
                 // number of partition
                 --ghost_cells[gc];
@@ -365,17 +378,20 @@ void TriangularMesh::read_msh(const std::string &meshfile)
           // add the new element in the list
           if (el_type == 2) // 3-nodes triangle
           {
+            const int serial_number = _elements.size();
             _elements.push_back(new Triangle(nodes,
-                                             _elements.size(), // serial number
+                                             serial_number,
                                              phys_domain,
                                              extra_id));
+            for (int ii = 0; ii < n_elem_nodes; ++ii)
+              _node_to_cell[nodes[ii]].push_back(serial_number);
           }
         } // loop over mesh elements
 
         // check some expectations
         expect(number == nelements, "The number of the last read Gmsh's "
-               "element (" + d2s<int>(number) + ") is not equal to the amount "
-               "of all elements in the mesh (" + d2s<int>(nelements) + ")");
+               "element (" + d2s(number) + ") is not equal to the amount "
+               "of all elements in the mesh (" + d2s(nelements) + ")");
 
       } // ASCII format
 
@@ -412,8 +428,7 @@ const Triangle& TriangularMesh::element(int number) const
 
 
 
-int TriangularMesh::find_element(const Point2 &point,
-                                 bool throw_exception) const
+bool TriangularMesh::contains_point(const Point2 &point) const
 {
   const double px = point.x();
   const double pz = point.z();
@@ -429,28 +444,106 @@ int TriangularMesh::find_element(const Point2 &point,
       px > x1 + FIND_CELL_TOLERANCE ||
       pz < z0 - FIND_CELL_TOLERANCE ||
       pz > z1 + FIND_CELL_TOLERANCE)
-  {
-    if (throw_exception)
-      require(false, "A triangle containing point " + d2s(point) + " was not "
-              "found");
-
-    return -1; // an element wan't found
-  }
+    return false;
 
   // If the point is within the region bounded by min and max possible points,
   // that also doesn't mean that the point belong to the mesh, but in this case
   // we have to check all elements.
 
+  return true;
+}
+
+
+
+int TriangularMesh::find_element(const Point2 &point,
+                                 int cell_index,
+                                 bool throw_exception) const
+{
+  require(cell_index >= 0 && cell_index < static_cast<int>(_elements.size()),
+          "cell_index (" + d2s(cell_index) + ") is out of range [0, " +
+          d2s(_elements.size()) + ")");
+
+  const Triangle &this_cell = *_elements[cell_index];
+  double this_diff;
+  if(this_cell.contains_point(point, _vertices, &this_diff))
+    return cell_index;
+  else
+  {
+    int vert_with_min_dist = -1;
+    double min_dist = 1e+30;
+    for (int v = 0; v < Triangle::N_VERTICES; ++v)
+    {
+      const int vert_index = this_cell.vertex(v);
+      const double dist_from_vert = (_vertices[vert_index] - point).L2_norm();
+      if (dist_from_vert < min_dist)
+      {
+        min_dist = dist_from_vert;
+        vert_with_min_dist = vert_index;
+      }
+    }
+
+    const Point2 &this_center = this_cell.center(_vertices);
+    min_dist = (this_center - point).L2_norm();
+
+    int cell_with_min_diff = -1;
+    int cell_with_min_dist = -1;
+
+    double min_diff = this_diff;
+    for (size_t c = 0; c < _node_to_cell[vert_with_min_dist].size(); ++c)
+    {
+      const int neighbor_index = _node_to_cell[vert_with_min_dist][c];
+      if (neighbor_index == cell_index) continue;
+      const Triangle &neighbor_cell = *_elements[neighbor_index];
+      double neighbor_diff;
+      if (neighbor_cell.contains_point(point, _vertices, &neighbor_diff))
+        return neighbor_index;
+      if (neighbor_diff < min_diff)
+      {
+        min_diff = neighbor_diff;
+        cell_with_min_diff = neighbor_index;
+      }
+
+      const Point2 neighbor_center = neighbor_cell.center(_vertices);
+      const double neighbor_dist = (neighbor_center - point).L2_norm();
+      if (neighbor_dist < min_dist)
+      {
+        min_dist = neighbor_dist;
+        cell_with_min_dist = neighbor_index;
+      }
+    }
+
+    if (cell_with_min_diff == -1 && cell_with_min_dist == -1)
+    { // all neighbors are farther from the point than this cell
+      if (throw_exception)
+        require(false, "A triangle containing point " + d2s(point) + " was not "
+                "found.\nCurrent min_dist = " + d2s(min_dist) + "\nCurrent "
+                "min_diff = " + d2s(min_diff));
+      return -1;
+    }
+    else if (cell_with_min_diff != -1)
+      return find_element(point, cell_with_min_diff, throw_exception);
+    else
+      return find_element(point, cell_with_min_dist, throw_exception);
+  }
+}
+
+
+
+int TriangularMesh::full_search(const Point2 &point) const
+{
+  double min_diff = 1e+30;
+
   for (size_t el = 0; el < _elements.size(); ++el)
   {
-    if(_elements[el]->contains_point(point, _vertices))
+    const Triangle &this_cell = *_elements[el];
+    double this_diff;
+    if(this_cell.contains_point(point, _vertices, &this_diff))
       return el;
+    else
+      min_diff = std::min(this_diff, min_diff);
   }
 
-  // We can be here only if we didn't find a cell
-  if (throw_exception)
-    require(false, "A triangle containing point " + d2s(point) + " was not "
-            "found");
-
-  return -1; // to show that the element wasn't found
+  require(false, "The point " + d2s(point) + " wasn't found! min_diff = " +
+          d2s(min_diff));
+  return -1; // for compiler
 }

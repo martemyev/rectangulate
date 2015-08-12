@@ -33,13 +33,16 @@ public:
   Point2 center(const std::vector<Point2> &points) const;
 
   bool contains_point(const Point2 &point,
-                      const std::vector<Point2> &mesh_points) const;
+                      const std::vector<Point2> &mesh_points,
+                      double *areas_ratio = nullptr) const;
 
   /**
    * Get triangle's vertices with the coordinates.
    */
   void get_vertices(const std::vector<Point2> &points,
                     Point2 *vertices) const;
+
+  int vertex(int num) const;
 
 private:
 

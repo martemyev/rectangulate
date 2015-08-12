@@ -220,4 +220,32 @@ private: // ================= PRIVATE =======================
   double _x, _z;
 };
 
+
+
+
+
+
+class PhysicalPoint2
+{
+public:
+
+  PhysicalPoint2();
+  PhysicalPoint2(const PhysicalPoint2& pp);
+  PhysicalPoint2& operator =(const PhysicalPoint2& pp);
+  PhysicalPoint2(double x_, double z_, int mat_ID);
+  ~PhysicalPoint2() { }
+
+  Point2 point() const { return _point; }
+  int material_ID() const { return _material_ID; }
+  void material_ID(int matID) { _material_ID = matID; }
+
+private:
+
+  Point2 _point; ///< Coordinates of the physical point
+  int _material_ID; ///< Material ID of the physical point (to define physical
+                    ///< properties)
+};
+
+
+
 #endif // POINT_HPP

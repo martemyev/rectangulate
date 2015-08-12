@@ -29,13 +29,15 @@ int main(int argc, char **argv)
 
     RectangularMesh rect_mesh(min, max, nnx, nnz);
     rect_mesh.build();
-    rect_mesh.assign_material_id(tri_mesh, param.n_random_points);
+    rect_mesh.assign_material_id(tri_mesh);
 
-    std::vector<std::string> out_filenames;
-    rect_mesh.write_binary_files(param.properties_filename, out_filenames);
+    std::vector<std::string> filenames_out_in_cells, filenames_out_at_nodes;
+    rect_mesh.write_binary_files(param.properties_filename,
+                                 filenames_out_in_cells,
+                                 filenames_out_at_nodes);
 
-    convert_to_xz(out_filenames, nnx, nnz);
-    convert_to_node_values(out_filenames, nnx, nnz);
+    convert_in_cells_to_xz(filenames_out_in_cells, nnx, nnz);
+    convert_at_nodes_to_ASCII(filenames_out_at_nodes, (nnx+1)*(nnz+1));
   }
   catch(int)
   {

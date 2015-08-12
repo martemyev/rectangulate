@@ -12,7 +12,6 @@ Parameters::Parameters()
     properties_filename(DEFAULT_FILE_NAME),
     h_rect_x(0.0),                           // incorrect by default
     h_rect_z(0.0),                           // incorrect by default
-    n_random_points(10),                     // correct (meaningful)
     _parameters(),
     _longest_string_key_len(DEFAULT_PRINT_LEN),
     _longest_string_value_len(DEFAULT_PRINT_LEN)
@@ -23,7 +22,6 @@ Parameters::Parameters()
   add_option("-propfile", new OneParam<std::string>("name of file with media properties", &properties_filename, ++p));
   add_option("-hx", new OneParam<double>("size of rectangular cells in x-direction", &h_rect_x, ++p));
   add_option("-hz", new OneParam<double>("size of rectangular cells in z-direction", &h_rect_z, ++p));
-  add_option("-rand", new OneParam<int>("number of random points in each triangle (for assigning properties)", &n_random_points, ++p));
 }
 
 
@@ -150,8 +148,6 @@ void Parameters::check_parameters() const
 
   require(h_rect_x > 0, "hx (" + d2s(h_rect_x) + ") should be >0");
   require(h_rect_z > 0, "hz (" + d2s(h_rect_z) + ") should be >0");
-
-  require(n_random_points > 0, "rand ("+d2s(n_random_points)+") should be >0");
 }
 
 
