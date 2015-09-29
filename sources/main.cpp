@@ -28,16 +28,21 @@ int main(int argc, char **argv)
     std::cout << "nnx = " << nnx << "\nnnz = " << nnz << std::endl;
 
     RectangularMesh rect_mesh(min, max, nnx, nnz);
-    rect_mesh.build();
-    rect_mesh.assign_material_id(tri_mesh);
 
-    std::vector<std::string> filenames_out_in_cells, filenames_out_at_nodes;
-    rect_mesh.write_binary_files(param.properties_filename,
-                                 filenames_out_in_cells,
-                                 filenames_out_at_nodes);
+    if (param.assign_cells)
+    {
+      rect_mesh.assign_material_id_in_cells(tri_mesh);
+      std::vector<std::string> filenames_out;
+      rect_mesh.write_binary_files_in_cells(param.properties_filename,
+                                            filenames_out);
+      convert_in_cells_to_xz(filenames_out, nnx, nnz);
+    }
 
-    convert_in_cells_to_xz(filenames_out_in_cells, nnx, nnz);
-    convert_at_nodes_to_ASCII(filenames_out_at_nodes, (nnx+1)*(nnz+1));
+    if (param.assign_nodes)
+    {
+      rect_mesh.assign_material_id_at_nodes(tri_mesh);
+      rect_mesh.write_ASCII_files_at_nodes(param.properties_filename);
+    }
   }
   catch(int)
   {

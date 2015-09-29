@@ -21,8 +21,8 @@ RectangularMesh::RectangularMesh(const Point2 &beg,
     _max_coord(end),
     _n_elements_x(nx_),
     _n_elements_z(nz_),
-    _n_vertices(0),
-    _vertices(nullptr)
+    _verts_ID(nullptr),
+    _cells_ID(nullptr)
 {
   require(_min_coord < _max_coord, "The max point of the mesh (" +
           d2s(_max_coord) + ") must be bigger than the min point (" +
@@ -38,106 +38,109 @@ RectangularMesh::RectangularMesh(const Point2 &beg,
 
 RectangularMesh::~RectangularMesh()
 {
-  delete[] _vertices;
+  delete[] _cells_ID;
+  delete[] _verts_ID;
 }
 
 
 
 
-void RectangularMesh::build()
+void RectangularMesh::
+assign_material_id_in_cells(const TriangularMesh &tri_mesh)
 {
-  std::cout << "Building a rectangular mesh..." << std::endl;
-  double t_begin = get_wall_time();
+  double t0 = get_wall_time();
+  std::cout << "Assigning material IDs in cells..." << std::endl;
 
-  build_vertices();
+  _cells_ID = new int[_n_elements_x*_n_elements_z];
 
-  std::cout << "Building a rectangular mesh is done. Time = "
-            << get_wall_time() - t_begin << std::endl;
-}
-
-
-
-
-void RectangularMesh::build_vertices()
-{
   const double x0 = _min_coord.x(); // limits in x-direction
   const double x1 = _max_coord.x();
   const double z0 = _min_coord.z(); // limits in z-direction
   const double z1 = _max_coord.z();
-
-  require(x1 > x0 && z1 > z0, "Incorrect limits of the rectangular domain");
-
   const double hx = (x1 - x0) / _n_elements_x; // step in x-direction
   const double hz = (z1 - z0) / _n_elements_z; // step in z-direction
 
-  double *coord_x = new double[_n_elements_x + 1];
-  for (int i = 0; i < _n_elements_x; ++i)
-    coord_x[i] = x0 + i * hx;
-  coord_x[_n_elements_x] = x1;
-
-  double *coord_z = new double[_n_elements_z + 1];
-  for (int i = 0; i < _n_elements_z; ++i)
-    coord_z[i] = z0 + i * hz;
-  coord_z[_n_elements_z] = z1;
-
-  _n_vertices = (_n_elements_x + 1) * (_n_elements_z + 1);
-  _vertices = new PhysicalPoint2[_n_vertices];
-
-  int ver = 0; // the number of a current vertex
-  for (int i = 0; i < _n_elements_z + 1; ++i)
-  {
-    const double z = coord_z[i];
-    for (int j = 0; j < _n_elements_x + 1; ++j)
-    {
-      const double x = coord_x[j];
-      _vertices[ver] = PhysicalPoint2(x, z, VOID_MATERIAL_ID);
-      ++ver;
-    }
-  }
-
-  delete[] coord_z;
-  delete[] coord_x;
-}
-
-
-
-
-void RectangularMesh::assign_material_id(const TriangularMesh &tri_mesh)
-{
-  double t0 = get_wall_time();
-  std::cout << "Assigning material IDs..." << std::endl;
-
-  // we must find a triangle containing the point: if we can't, we throw an
-  // exception
   const bool throw_exception = false;
 
-  for (int iz = 0; iz < _n_elements_z+1; ++iz)
+  for (int iz = 0; iz < _n_elements_z; ++iz)
   {
+    const double zcen = z0 + (iz+0.5)*hz; // z-coord of a cell center
     int triangle_index = 0; // reset the index from the previous search
-    for (int ix = 0; ix < _n_elements_x+1; ++ix)
+    for (int ix = 0; ix < _n_elements_x; ++ix)
     {
-      PhysicalPoint2 &vertex = _vertices[iz*(_n_elements_x+1)+ix];
-      require(tri_mesh.contains_point(vertex.point()), "The triangular mesh "
-              "doesn't contain the point: " + d2s(vertex.point()));
+      const double xcen = x0 + (ix+0.5)*hx; // x-coord of a cell center
+      Point2 cell_center(xcen, zcen);
+      require(tri_mesh.contains_point(cell_center), "The triangular mesh "
+              "doesn't contain the point: " + d2s(cell_center));
 
       // every search along the x-line at the same z-coordinate starts with the
       // previously found triangle
-      triangle_index = tri_mesh.find_element(vertex.point(),
+      triangle_index = tri_mesh.find_element(cell_center,
                                              triangle_index,
                                              throw_exception);
 
       if (triangle_index < 0) // if it wasn't found
       {
-        std::cout << "  full search for point " << vertex.point() << std::endl;
-        triangle_index = tri_mesh.full_search(vertex.point());
+        std::cout << "  full search for point " << cell_center << std::endl;
+        triangle_index = tri_mesh.full_search(cell_center);
       }
 
       const int mat_ID = tri_mesh.element(triangle_index).material_id();
-      vertex.material_ID(mat_ID);
+      _cells_ID[iz*_n_elements_x + ix] = mat_ID;
     }
   }
 
-  std::cout << "Assigning material IDs is done. Time = "
+  std::cout << "Assigning material IDs in cells is done. Time = "
+            << get_wall_time() - t0 << std::endl;
+}
+
+
+void RectangularMesh::
+assign_material_id_at_nodes(const TriangularMesh &tri_mesh)
+{
+  double t0 = get_wall_time();
+  std::cout << "Assigning material IDs at nodes..." << std::endl;
+
+  _verts_ID = new int[(_n_elements_x+1)*(_n_elements_z+1)];
+
+  const double x0 = _min_coord.x(); // limits in x-direction
+  const double x1 = _max_coord.x();
+  const double z0 = _min_coord.z(); // limits in z-direction
+  const double z1 = _max_coord.z();
+  const double hx = (x1 - x0) / _n_elements_x; // step in x-direction
+  const double hz = (z1 - z0) / _n_elements_z; // step in z-direction
+
+  const bool throw_exception = false;
+
+  for (int iz = 0; iz < _n_elements_z+1; ++iz)
+  {
+    const double z = (iz == _n_elements_z ? z1 : z0 + iz*hz);
+    int triangle_index = 0; // reset the index from the previous search
+    for (int ix = 0; ix < _n_elements_x+1; ++ix)
+    {
+      const double x = (ix == _n_elements_x ? x1 : x0 + ix*hx);
+      Point2 vertex(x, z);
+      require(tri_mesh.contains_point(vertex), "The triangular mesh doesn't "
+              "contain the point: " + d2s(vertex));
+
+      // every search along the x-line at the same z-coordinate starts with the
+      // previously found triangle
+      triangle_index = tri_mesh.find_element(vertex,
+                                             triangle_index,
+                                             throw_exception);
+
+      if (triangle_index < 0) // if it wasn't found
+      {
+        std::cout << "  full search for point " << vertex << std::endl;
+        triangle_index = tri_mesh.full_search(vertex);
+      }
+
+      const int mat_ID = tri_mesh.element(triangle_index).material_id();
+      _verts_ID[iz*(_n_elements_x+1)+ix] = mat_ID;
+    }
+  }
+
+  std::cout << "Assigning material IDs at nodes is done. Time = "
             << get_wall_time() - t0 << std::endl;
 }
 
@@ -197,11 +200,10 @@ int RectangularMesh::find_element(const Point2 &point,
 
 
 void RectangularMesh::
-write_binary_files(const std::string &prop_filename,
-                   std::vector<std::string> &filenames_out_in_cells,
-                   std::vector<std::string> &filenames_out_at_nodes) const
+write_binary_files_in_cells(const std::string &prop_filename,
+                            std::vector<std::string> &filenames_out) const
 {
-  std::cout << "Writing binary files..." << std::endl;
+  std::cout << "Writing binary files in cells..." << std::endl;
   double t_begin = get_wall_time();
 
   // Create the map between the material IDs and the media properties. The
@@ -212,23 +214,19 @@ write_binary_files(const std::string &prop_filename,
 
   const int n_properties = properties.begin()->second.size();
 
-  filenames_out_in_cells.clear();
-  filenames_out_in_cells.resize(n_properties);
+  filenames_out.resize(n_properties);
 
   std::ofstream *out = new std::ofstream[n_properties];
   for (int i = 0; i < n_properties; ++i)
   {
-    filenames_out_in_cells[i] = "property" + d2s(i) + "_cells.bin";
-    out[i].open(filenames_out_in_cells[i].c_str(), std::ios::binary);
-    require(out[i], "File '" + filenames_out_in_cells[i] + "' can't be opened");
+    filenames_out[i] = "property" + d2s(i) + "_cells.bin";
+    out[i].open(filenames_out[i].c_str(), std::ios::binary);
+    require(out[i], "File '" + filenames_out[i] + "' can't be opened");
   }
 
-  double **values_at_nodes = new double*[_n_vertices];
-  for (int i = 0; i < _n_vertices; ++i)
+  for (int i = 0; i < _n_elements_x*_n_elements_z; ++i)
   {
-    values_at_nodes[i] = new double[n_properties];
-
-    const int matID = _vertices[i].material_ID();
+    const int matID = _cells_ID[i];
     std::map<int, std::vector<double> >::const_iterator iter =
         properties.find(matID);
     require(iter != properties.end(), "The material ID " + d2s(matID) +
@@ -236,61 +234,67 @@ write_binary_files(const std::string &prop_filename,
     const std::vector<double> values = iter->second;
 
     for (int p = 0; p < n_properties; ++p)
-      values_at_nodes[i][p] = values[p];
-  }
-
-  for (int iz = 0; iz < _n_elements_z; ++iz)
-  {
-    for (int ix = 0; ix < _n_elements_x; ++ix)
     {
-      const int v0 = (iz+0)*(_n_elements_x+1)+(ix+0);
-      const int v1 = (iz+0)*(_n_elements_x+1)+(ix+1);
-      const int v2 = (iz+1)*(_n_elements_x+1)+(ix+0);
-      const int v3 = (iz+1)*(_n_elements_x+1)+(ix+1);
-      for (int p = 0; p < n_properties; ++p)
-      {
-        OUT_FLOAT_TYPE value_in_cell = 0.25*(values_at_nodes[v0][p]+
-                                             values_at_nodes[v1][p]+
-                                             values_at_nodes[v2][p]+
-                                             values_at_nodes[v3][p]);
-        out[p].write(reinterpret_cast<char*>(&value_in_cell),
-                     sizeof(OUT_FLOAT_TYPE));
-      }
+      OUT_FLOAT_TYPE val = values[p];
+      out[p].write(reinterpret_cast<char*>(&val), sizeof(OUT_FLOAT_TYPE));
     }
   }
 
   for (int i = 0; i < n_properties; ++i)
     out[i].close();
-
-  filenames_out_at_nodes.clear();
-  filenames_out_at_nodes.resize(n_properties);
-
-  for (int i = 0; i < n_properties; ++i)
-  {
-    filenames_out_at_nodes[i] = "property" + d2s(i) + "_nodes.bin";
-    out[i].open(filenames_out_at_nodes[i].c_str(), std::ios::binary);
-    require(out[i], "File '" + filenames_out_at_nodes[i] + "' can't be opened");
-  }
-
-  for (int v = 0; v < _n_vertices; ++v)
-  {
-    for (int p = 0; p < n_properties; ++p)
-    {
-      OUT_FLOAT_TYPE value = values_at_nodes[v][p];
-      out[p].write(reinterpret_cast<char*>(&value), sizeof(OUT_FLOAT_TYPE));
-    }
-  }
-
-  for (int i = 0; i < n_properties; ++i)
-    out[i].close();
-
-  for (int i = 0; i < _n_vertices; ++i)
-    delete[] values_at_nodes[i];
-  delete[] values_at_nodes;
 
   delete[] out;
 
-  std::cout << "Writing binary files is done. Time = "
+  std::cout << "Writing binary files in cells is done. Time = "
+            << get_wall_time() - t_begin << std::endl;
+}
+
+
+
+
+void RectangularMesh::
+write_ASCII_files_at_nodes(const std::string &prop_filename) const
+{
+  std::cout << "Writing ASCII files at nodes..." << std::endl;
+  double t_begin = get_wall_time();
+
+  // Create the map between the material IDs and the media properties. The
+  // material IDs must exactly the same as in the given triangular mesh.
+  std::map<int, std::vector<double> > properties;
+
+  get_properties(prop_filename, properties);
+
+  const int n_properties = properties.begin()->second.size();
+
+  std::vector<std::string> filenames_out(n_properties);
+
+  std::ofstream *out = new std::ofstream[n_properties];
+  for (int i = 0; i < n_properties; ++i)
+  {
+    filenames_out[i] = "property" + d2s(i) + "_nodes.txt";
+    out[i].open(filenames_out[i].c_str(), std::ios::binary);
+    require(out[i], "File '" + filenames_out[i] + "' can't be opened");
+  }
+
+  for (int i = 0; i < (_n_elements_x+1)*(_n_elements_z+1); ++i)
+  {
+    const int matID = _verts_ID[i];
+    std::map<int, std::vector<double> >::const_iterator iter =
+        properties.find(matID);
+    require(iter != properties.end(), "The material ID " + d2s(matID) +
+            " wasn't found in the properties file");
+    const std::vector<double> values = iter->second;
+
+    for (int p = 0; p < n_properties; ++p)
+      out[p] << values[p] << "\n";
+  }
+
+  for (int i = 0; i < n_properties; ++i)
+    out[i].close();
+
+  delete[] out;
+
+  std::cout << "Writing ASCII files at nodes is done. Time = "
             << get_wall_time() - t_begin << std::endl;
 }
 
@@ -425,68 +429,3 @@ void convert_in_cells_to_xz(const std::vector<std::string>& filenames,
   std::cout << "Converting to xz plane is done. Time = "
             << get_wall_time() - t_begin << std::endl;
 }
-
-
-
-void convert_at_nodes_to_ASCII(const std::vector<std::string>& filenames,
-                               int n_values)
-{
-  std::cout << "Converting to ASCII..." << std::endl;
-  double t_begin = get_wall_time();
-
-  const int n_files = filenames.size();
-
-  for (int f = 0; f < n_files; ++f)
-  {
-    const std::string filename = filenames[f];
-
-    std::ifstream in(filename.c_str(), std::ios::binary);
-    require(in, "File '" + filename + "' can't be opened");
-
-    in.seekg(0, in.end); // jump to the end of the file
-    int length = in.tellg(); // total length of the file in bytes
-    int size_value = length / n_values; // size (in bytes) of one value
-
-    require(length % n_values == 0, "The number of bytes in the file " +
-            filename + " is not divisible by the number of elements");
-
-    in.seekg(0, in.beg); // jump to the beginning of the file
-
-    double *values = new double[n_values];
-
-    if (size_value == sizeof(double))
-    {
-      in.read((char*)values, n_values*size_value); // read all at once
-
-      require(n_values == (int)in.gcount(), "The number of successfully "
-              "read values is different from the expected one");
-    }
-    else if (size_value == sizeof(float))
-    {
-      float val = 0;
-      for (int i = 0; i < n_values; ++i)  // read element-by-element
-      {
-        in.read((char*)&val, size_value); // read a 'float' value
-        values[i] = val;                  // convert it to a 'double' value
-      }
-    }
-    else require(false, "Unknown size of an element in bytes");
-
-    in.close();
-
-    const std::string fname_out = file_stem(filename) + ".txt";
-    std::ofstream out(fname_out.c_str());
-    require(out, "File '" + fname_out + "' can't be opened");
-
-    for (int i = 0; i < n_values; ++i)
-      out << values[i] << "\n";
-
-    out.close();
-
-    delete[] values;
-  }
-
-  std::cout << "Converting to ASCII is done. Time = "
-            << get_wall_time() - t_begin << std::endl;
-}
-

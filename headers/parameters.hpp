@@ -178,6 +178,16 @@ public:
    */
   double h_rect_z;
 
+  /**
+   * Assign properties in cells.
+   */
+  bool assign_cells;
+
+  /**
+   * Assign properties at nodes.
+   */
+  bool assign_nodes;
+
 private:
 
   Parameters(const Parameters&);

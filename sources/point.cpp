@@ -173,39 +173,3 @@ double Point2::L2_norm() const
   return sqrt(_x*_x + _z*_z);
 }
 
-
-
-
-
-
-
-
-
-PhysicalPoint2::PhysicalPoint2()
-  : _point()
-  , _material_ID(0)
-{ }
-
-
-
-PhysicalPoint2::PhysicalPoint2(const PhysicalPoint2 &pp)
-  : _point(pp._point)
-  , _material_ID(pp._material_ID)
-{ }
-
-
-
-PhysicalPoint2& PhysicalPoint2::operator =(const PhysicalPoint2 &pp)
-{
-  _point = pp._point;
-  _material_ID = pp._material_ID;
-  return *this;
-}
-
-
-
-PhysicalPoint2::PhysicalPoint2(double x_, double z_, int mat_ID)
-  : _point(x_, z_)
-  , _material_ID(mat_ID)
-{ }
-

@@ -8,13 +8,15 @@
 
 
 Parameters::Parameters()
-  : mesh_filename(DEFAULT_FILE_NAME),
-    properties_filename(DEFAULT_FILE_NAME),
-    h_rect_x(0.0),                           // incorrect by default
-    h_rect_z(0.0),                           // incorrect by default
-    _parameters(),
-    _longest_string_key_len(DEFAULT_PRINT_LEN),
-    _longest_string_value_len(DEFAULT_PRINT_LEN)
+  : mesh_filename(DEFAULT_FILE_NAME)
+  , properties_filename(DEFAULT_FILE_NAME)
+  , h_rect_x(0.0)                           // incorrect by default
+  , h_rect_z(0.0)                           // incorrect by default
+  , assign_cells(true)                      // this is typically what we need
+  , assign_nodes(false)                     // this is rare
+  , _parameters()
+  , _longest_string_key_len(DEFAULT_PRINT_LEN)
+  , _longest_string_value_len(DEFAULT_PRINT_LEN)
 {
   int p = 0;
 
@@ -22,6 +24,8 @@ Parameters::Parameters()
   add_option("-propfile", new OneParam<std::string>("name of file with media properties", &properties_filename, ++p));
   add_option("-hx", new OneParam<double>("size of rectangular cells in x-direction", &h_rect_x, ++p));
   add_option("-hz", new OneParam<double>("size of rectangular cells in z-direction", &h_rect_z, ++p));
+  add_option("-cells", new OneParam<bool>("assign properties in cells", &assign_cells, ++p));
+  add_option("-nodes", new OneParam<bool>("assign properties at nodes", &assign_nodes, ++p));
 }
 
 

@@ -31,13 +31,14 @@ public:
 
   ~RectangularMesh();
 
-  void build();
+  void assign_material_id_in_cells(const TriangularMesh &tri_mesh);
+  void assign_material_id_at_nodes(const TriangularMesh &tri_mesh);
 
-  void assign_material_id(const TriangularMesh &tri_mesh);
+  void write_binary_files_in_cells(const std::string &prop_filename,
+                                   std::vector<std::string> &filenames_out) const;
 
-  void write_binary_files(const std::string &prop_filename,
-                          std::vector<std::string> &filenames_out_in_cells,
-                          std::vector<std::string> &filenames_out_at_nodes) const;
+  void write_ASCII_files_at_nodes(const std::string &prop_filename) const;
+
 
 
 protected: // ========================== PROTECTED =============================
@@ -48,13 +49,11 @@ protected: // ========================== PROTECTED =============================
   int _n_elements_x; ///< The number of the mesh elements in x-direction.
   int _n_elements_z; ///< The number of the mesh elements in z-direction
 
-  int _n_vertices;   ///< The number of the mesh vertices.
-  PhysicalPoint2 *_vertices; ///< Vector of vertices with material ID (physical)
+  int *_verts_ID;    ///< Material IDs assigned to vertices.
+  int *_cells_ID;    ///< Material IDs assigned to cells.
 
   RectangularMesh(const RectangularMesh &mesh);
   RectangularMesh& operator =(const RectangularMesh &mesh);
-
-  void build_vertices();
 
   int find_element(const Point2 &point, bool throw_exception) const;
 };
@@ -66,10 +65,5 @@ void get_properties(const std::string &filename,
 void convert_in_cells_to_xz(const std::vector<std::string>& filenames,
                             int nnx,
                             int nnz);
-
-void convert_at_nodes_to_ASCII(const std::vector<std::string>& filenames,
-                               int n_values);
-
-
 
 #endif // RECTANGULAR_MESH_HPP
